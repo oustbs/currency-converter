@@ -2,7 +2,7 @@
   "name": "eur-usd-converter",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://github.com/oustbs/currency-converter.git",
+  "homepage": "https://oustbs.github.io/currency-converter",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
