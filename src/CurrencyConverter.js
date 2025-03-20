@@ -12,16 +12,26 @@ const CurrencyConverter = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!isFixedRateActive) {
-        setExchangeRate(prev => {
-          const variation = Math.random() * 0.1 - 0.05;
-          const newRate = parseFloat((prev + variation).toFixed(4));
-          return Math.max(newRate, 0.01);
-        });
-      }
+      setExchangeRate(prev => {
+        const variation = (Math.random() * 0.1) - 0.05;
+        const newRate = prev + variation;
+        // limiter le taux entre 0.9 et 1.3
+        return parseFloat(Math.min(Math.max(newRate, 0.9), 1.3).toFixed(4));
+      });
     }, 3000);
+
     return () => clearInterval(interval);
-  }, [isFixedRateActive]);
+  }, []);
+
+  useEffect(() => {
+    if (isFixedRateActive && fixedRate) {
+      const variation = Math.abs((fixedRate - exchangeRate) / exchangeRate) * 100;
+      if (variation > 2) {
+        setIsFixedRateActive(false);
+        alert("Le taux fixe a été désactivé car la variation dépasse 2%.");
+      }
+    }
+  }, [exchangeRate, fixedRate, isFixedRateActive]);
 
   useEffect(() => {
     if (amount && !isNaN(amount)) {
@@ -48,7 +58,7 @@ const CurrencyConverter = () => {
 
   const toggleFixedRate = () => {
     if (!isFixedRateActive && !fixedRate) {
-      setFixedRate(exchangeRate);
+      setFixedRate(exchangeRate); // initialiser avec le taux actuel si vide
     }
     setIsFixedRateActive(!isFixedRateActive);
   };
@@ -56,9 +66,6 @@ const CurrencyConverter = () => {
   const addToHistory = () => {
     if (amount && convertedAmount) {
       const now = new Date();
-      const currentRate = isFixedRateActive && fixedRate ? fixedRate : exchangeRate;
-      const usedRate = isEUR ? currentRate : 1 / currentRate;
-
       const entry = {
         date: now.toLocaleDateString("fr-FR"),
         time: now.toLocaleTimeString("fr-FR", {
@@ -70,7 +77,7 @@ const CurrencyConverter = () => {
         inputCurrency: isEUR ? "EUR" : "USD",
         outputAmount: convertedAmount,
         outputCurrency: isEUR ? "USD" : "EUR",
-        rateUsed: usedRate.toFixed(4),
+        rateUsed: (isFixedRateActive && fixedRate ? fixedRate : exchangeRate).toFixed(4),
         rateReal: exchangeRate.toFixed(4),
         difference: isFixedRateActive && fixedRate
           ? (((fixedRate - exchangeRate) / exchangeRate * 100).toFixed(2) + "%")
@@ -78,6 +85,10 @@ const CurrencyConverter = () => {
         conversionType: isFixedRateActive ? "Fixe" : "Auto"
       };
       setHistory([entry, ...history.slice(0, 4)]);
+
+      // fixed rate
+      setFixedRate(null);
+      setIsFixedRateActive(false);
     }
   };
 
@@ -94,8 +105,8 @@ const CurrencyConverter = () => {
           <strong>
             {(
               isEUR
-                ? (isFixedRateActive && fixedRate ? fixedRate : exchangeRate)
-                : 1 / (isFixedRateActive && fixedRate ? fixedRate : exchangeRate)
+                ? exchangeRate
+                : 1 / exchangeRate // afficher le taux de change en temps réel
             ).toFixed(4)}
           </strong>
           <span> {isEUR ? "USD" : "EUR"}</span>
@@ -167,15 +178,18 @@ const CurrencyConverter = () => {
             step="0.0001"
             value={fixedRate ?? ""}
             onChange={handleFixRate}
-            disabled={!isFixedRateActive}
             placeholder="Saisir taux fixe"
             className={`rate-input ${isFixedRateActive && !fixedRate ? "error" : ""}`}
           />
-        </div>
 
-        {isFixedRateActive && !fixedRate && (
-          <p className="error-message">⚠️ Veuillez entrer un taux valide</p>
-        )}
+          {isFixedRateActive && !fixedRate && (
+            <p className="error-message">⚠️ Veuillez entrer un taux valide</p>
+          )}
+
+          {!isFixedRateActive && fixedRate && (
+            <p className="info-message">ℹ️ Le taux fixe est désactivé. Vous pouvez le modifier pour le réactiver.</p>
+          )}
+        </div>
       </div>
 
       <div className="history-section">
